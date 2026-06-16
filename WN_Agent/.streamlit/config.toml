@@ -1,0 +1,3 @@
+[client]
+# 隐藏右上角工具栏，避免复制文字时误触
+toolbarMode = "minimal"

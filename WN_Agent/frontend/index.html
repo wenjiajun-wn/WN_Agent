@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WN Agent</title>
+<style>
+:root {
+  --bg: #f9fafb;
+  --sidebar-bg: #f3f4f6;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --text: #1f2937;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --brand: #4f46e5;
+  --brand-light: #eef2ff;
+  --hover: #f3f4f6;
+  --user-bubble: #4f46e5;
+  --user-text: #ffffff;
+  --radius: 16px;
+  --shadow: 0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.06);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; background:var(--bg); display:flex; height:100vh; color:var(--text); }
+
+/* ── 侧边栏 ──────────────────────────────── */
+.sidebar {
+  width: 280px; background: var(--sidebar-bg); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; flex-shrink:0; transition: width .2s;
+}
+.sidebar-header { padding: 20px 16px 12px; }
+.sidebar-header h2 { font-size: 18px; font-weight: 700; color: var(--text); display:flex; align-items:center; gap:8px; }
+.sidebar-header h2 .dot { width:8px; height:8px; background:#22c55e; border-radius:50%; }
+.btn-new {
+  width:100%; padding:10px 16px; border:1px solid var(--border); border-radius:12px;
+  background:var(--card); cursor:pointer; font-size:14px; color:var(--text);
+  display:flex; align-items:center; gap:8px; transition: all .15s; margin-top:12px;
+}
+.btn-new:hover { background: var(--brand-light); border-color: var(--brand); color: var(--brand); }
+.conv-list { flex:1; overflow-y:auto; padding: 0 12px; }
+.conv-item {
+  padding:10px 12px; border-radius:10px; cursor:pointer; font-size:13px; color:var(--text-secondary);
+  margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  transition: background .1s; display:flex; align-items:center; gap:8px;
+}
+.conv-item:hover { background:var(--hover); }
+.conv-item.active { background:var(--brand-light); color:var(--brand); font-weight:500; }
+.conv-item .icon { font-size:14px; opacity:.5; }
+.sidebar-footer { padding:12px 16px; border-top:1px solid var(--border); font-size:12px; color:var(--text-muted); text-align:center; }
+
+/* ── 主区域 ───────────────────────────────── */
+.main { flex:1; display:flex; flex-direction:column; min-width:0; }
+.header { padding:14px 24px; font-size:15px; font-weight:600; color:var(--text-secondary); border-bottom:1px solid var(--border); background:var(--card); display:flex; align-items:center; gap:8px; }
+.chat { flex:1; overflow-y:auto; }
+.chat-inner { max-width:768px; margin:0 auto; padding:24px 20px; }
+
+/* 消息 */
+.msg { margin-bottom:24px; display:flex; gap:14px; }
+.msg.user { flex-direction:row-reverse; }
+.avatar {
+  width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:16px; flex-shrink:0; margin-top:2px;
+}
+.msg.assistant .avatar { background:var(--brand-light); }
+.msg.user .avatar { background:var(--user-bubble); color:#fff; }
+.msg .body { max-width:85%; font-size:14px; line-height:1.7; }
+.msg.assistant .body { padding:0 4px; }
+.msg.user .body { background:var(--user-bubble); color:var(--user-text); padding:10px 16px; border-radius:18px 4px 18px 18px; }
+.msg .body p { margin:6px 0; }
+.msg .body p:first-child { margin-top:0; }
+.msg .body p:last-child { margin-bottom:0; }
+.msg .body ul, .msg .body ol { margin:6px 0; padding-left:20px; }
+.msg .body li { margin:2px 0; }
+.msg .body strong { font-weight:600; }
+.msg .body pre { background:#1e1e1e; color:#d4d4d4; padding:14px 16px; border-radius:10px; overflow-x:auto; font-size:13px; line-height:1.5; margin:8px 0; white-space:pre-wrap; }
+.msg .body code { font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace; font-size:13px; }
+.msg.assistant .body code { background:var(--hover); padding:2px 6px; border-radius:4px; }
+.msg .body pre code { background:transparent; padding:0; }
+.msg .body h2 { font-size:17px; margin:12px 0 6px; }
+.msg .body h3 { font-size:15px; margin:10px 0 4px; }
+.msg .body h4 { font-size:14px; margin:8px 0 4px; }
+
+/* 空状态 */
+.empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:12px; }
+.empty-state .logo { font-size:48px; }
+.empty-state .title { font-size:22px; font-weight:700; color:var(--text); }
+.empty-state .sub { font-size:14px; color:var(--text-secondary); }
+
+/* ── 底部输入区 ────────────────────────────── */
+.bottom { padding:0 20px 20px; background:var(--bg); }
+.input-wrap { max-width:768px; margin:0 auto; background:var(--card); border:1px solid var(--border); border-radius:20px; padding:8px 8px 8px 20px; box-shadow:var(--shadow); display:flex; align-items:flex-end; gap:4px; transition:border-color .15s; }
+.input-wrap:focus-within { border-color:var(--brand); box-shadow:0 0 0 3px rgba(79,70,229,.1); }
+.input-wrap textarea {
+  flex:1; border:none; outline:none; font-size:14px; line-height:1.5; padding:6px 0;
+  background:transparent; resize:none; font-family:inherit; color:var(--text);
+  max-height:150px;
+}
+.input-wrap textarea::placeholder { color:var(--text-muted); }
+.input-wrap button {
+  width:38px; height:38px; border-radius:50%; border:none; cursor:pointer; font-size:16px;
+  flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  transition: all .15s; align-self:flex-end;
+}
+.btn-send { background:var(--brand); color:#fff; }
+.btn-send:hover { background:#4338ca; }
+.btn-send:disabled { background:#d1d5db; cursor:not-allowed; }
+.btn-stop { background:#ef4444; color:#fff; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.7; } }
+
+/* 思考动画 */
+.thinking { display:flex; align-items:center; gap:18px; padding:8px 0; }
+.thinking-bar { flex:1; height:2px; background:var(--border); border-radius:1px; overflow:hidden; }
+.thinking-bar::after { content:''; display:block; width:40%; height:100%; background:var(--brand); border-radius:1px; animation:slide 1.2s ease-in-out infinite; }
+@keyframes slide { 0% { transform:translateX(-100%); } 100% { transform:translateX(350%); } }
+
+/* 滚动条 */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:#9ca3af; }
+
+/* 移动端 */
+@media (max-width:640px) {
+  .sidebar { width:0; padding:0; border:none; overflow:hidden; }
+  .chat-inner { padding:16px 12px; }
+  .input-wrap { padding:6px 6px 6px 14px; }
+  .msg .body { max-width:92%; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── 侧边栏 ──────────────────────────────── -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h2>☕ WN Agent<span class="dot"></span></h2>
+    <button class="btn-new" onclick="newConv()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      新建对话
+    </button>
+  </div>
+  <div class="conv-list" id="convList"></div>
+  <div class="sidebar-footer">Powered by SmolAgents</div>
+</div>
+
+<!-- ── 主区域 ──────────────────────────────── -->
+<div class="main">
+  <div class="chat" id="chat">
+    <div class="chat-inner" id="chatInner"></div>
+  </div>
+
+  <div class="thinking" id="thinking" style="display:none; padding:0 20px 8px; max-width:768px; margin:0 auto; width:100%;">
+    <div class="thinking-bar"></div>
+  </div>
+
+  <div class="bottom">
+    <div class="input-wrap">
+      <textarea id="userInput" rows="1" placeholder="输入消息，Enter 发送，Shift+Enter 换行"
+        onkeydown="handleKey(event)" autofocus></textarea>
+      <button id="btnMain" class="btn-send" onclick="send()" title="发送">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Markdown 渲染 ──────────────────────────────
+function renderMd(text) {
+  if (!text) return '';
+  let html = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // 代码块
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+  // 行内代码
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // 粗体
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // 斜体
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  // 标题
+  html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+  html = html.replace(/^### (.+)$/gm, '<h4>$1</h4>');
+  html = html.replace(/^## (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^# (.+)$/gm, '<h2>$1</h2>');
+  // 分割线
+  html = html.replace(/^---$/gm, '<hr>');
+  // 列表
+  html = html.replace(/^[*-] (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+  // 段落
+  html = html.replace(/\n\n/g, '</p><p>');
+  html = html.replace(/\n/g, '<br>');
+
+  return '<p>' + html + '</p>';
+}
+
+// ── 状态 ──────────────────────────────────────
+const API = 'http://localhost:8000';
+let conversations = [];
+let activeId = localStorage.getItem('wn_active') || null;
+let abortCtrl = null;
+
+function getConv(id) { return conversations.find(c => c.id === id); }
+
+async function loadFromServer() {
+  try {
+    const resp = await fetch(`${API}/conversations`);
+    if (resp.ok) conversations = await resp.json();
+  } catch(e) { conversations = []; }
+}
+
+async function saveToServer() {
+  const conv = getConv(activeId);
+  if (!conv) return;
+  try {
+    await fetch(`${API}/conversations`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(conv),
+    });
+  } catch(e) {}
+}
+
+function save() {
+  localStorage.setItem('wn_active', activeId || '');
+  saveToServer();
+}
+
+function newConv() {
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+  conversations.unshift({ id, title: '', messages: [] });
+  activeId = id; save(); render();
+}
+
+function switchConv(id) { activeId = id; save(); render(); }
+
+function render() {
+  // 侧边栏
+  const list = document.getElementById('convList');
+  list.innerHTML = conversations.map(c =>
+    `<div class="conv-item${c.id===activeId?' active':''}" onclick="switchConv('${c.id}')">
+      <span class="icon">💬</span>${c.title || '新对话'}
+    </div>`
+  ).join('');
+
+  // 消息区
+  const inner = document.getElementById('chatInner');
+  const conv = getConv(activeId);
+
+  if (!conv || !conv.messages.length) {
+    inner.innerHTML = `
+      <div class="empty-state">
+        <div class="logo">☕</div>
+        <div class="title">有什么可以帮你？</div>
+        <div class="sub">天气、旅游、美食、咖啡点单、知识问答…</div>
+      </div>`;
+    return;
+  }
+
+  inner.innerHTML = conv.messages.map(m =>
+    `<div class="msg ${m.role}">
+      <div class="avatar">${m.role==='user'?'👤':'☕'}</div>
+      <div class="body">${renderMd(m.content)}</div>
+    </div>`
+  ).join('');
+  document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
+}
+
+// ── 输入处理 ──────────────────────────────────
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+}
+
+function autoResize() {
+  const ta = document.getElementById('userInput');
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight, 150) + 'px';
+}
+
+async function send() {
+  const textarea = document.getElementById('userInput');
+  const text = textarea.value.trim();
+  if (!text) return;
+
+  let conv = getConv(activeId);
+  if (!conv) { newConv(); conv = getConv(activeId); }
+  if (!conv.title) conv.title = text.slice(0, 20) + (text.length > 20 ? '...' : '');
+
+  conv.messages.push({ role: 'user', content: text });
+  textarea.value = ''; textarea.style.height = 'auto';
+  textarea.disabled = true;
+
+  const btn = document.getElementById('btnMain');
+  btn.className = 'btn-stop';
+  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>';
+  btn.onclick = stop;
+
+  document.getElementById('thinking').style.display = 'flex';
+  save(); render();
+
+  abortCtrl = new AbortController();
+  try {
+    const resp = await fetch(`${API}/chat`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ message:text, user_id:activeId, history:conv.messages.slice(0,-1) }),
+      signal: abortCtrl.signal,
+    });
+    if (!resp.ok) {
+      const err = await resp.json();
+      conv.messages.push({ role:'assistant', content:`⚠️ 服务器错误: ${err.detail || resp.status}` });
+    } else {
+      const data = await resp.json();
+      conv.messages.push({ role:'assistant', content: data.reply || '(空响应)' });
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      conv.messages.push({ role:'assistant', content:'❌ 无法连接后端，请确认 uvicorn 已启动 (localhost:8000)' });
+    }
+  } finally {
+    abortCtrl = null;
+    document.getElementById('thinking').style.display = 'none';
+    btn.className = 'btn-send';
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>';
+    btn.onclick = send;
+    textarea.disabled = false;
+    textarea.focus();
+    save(); render();
+  }
+}
+
+function stop() {
+  if (abortCtrl) abortCtrl.abort();
+  fetch(`${API}/cancel?user_id=${activeId}`, { method:'POST' }).catch(()=>{});
+  const conv = getConv(activeId);
+  if (conv) conv.messages.push({ role:'assistant', content:'⏹️ 已中断' });
+  save(); render();
+}
+
+// ── 输入框自动高度 ────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const ta = document.getElementById('userInput');
+  ta.addEventListener('input', autoResize);
+});
+
+// ── 初始化 ────────────────────────────────────
+(async function init() {
+  await loadFromServer();
+  if (!activeId || !getConv(activeId)) {
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    conversations.unshift({ id, title:'', messages:[] });
+    activeId = id;
+  }
+  save(); render();
+})();
+</script>
+</body>
+</html>

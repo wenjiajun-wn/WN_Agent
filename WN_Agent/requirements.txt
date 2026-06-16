@@ -1,0 +1,29 @@
+# Agent 框架
+smolagents>=1.0.0
+
+# 大模型
+openai>=1.0.0          # 兼容 DeepSeek / Qwen API
+dashscope>=1.14.0      # 通义千问原生 SDK（可选）
+
+# 向量数据库
+chromadb>=0.4.0
+
+# 后端
+fastapi>=0.110.0
+uvicorn>=0.29.0
+pydantic>=2.0.0
+
+# 工具层
+httpx>=0.27.0          # 异步 HTTP 请求
+python-dotenv>=1.0.0   # 环境变量
+
+# 记忆存储
+sqlalchemy>=2.0.0      # 用户偏好持久化
+redis>=5.0.0           # 会话缓存（可选）
+
+# RAG
+pypdf>=4.0.0           # PDF 解析
+sentence-transformers>=2.6.0  # 本地 Embedding（可选）
+
+# 前端（快速原型）
+streamlit>=1.33.0

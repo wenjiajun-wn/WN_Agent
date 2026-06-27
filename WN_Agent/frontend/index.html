@@ -200,6 +200,12 @@ function renderMd(text) {
 
 // ── 状态 ──────────────────────────────────────
 const API = 'http://localhost:8000';
+const API_KEY = localStorage.getItem('wn_api_key') || '';
+function apiHeaders() {
+  const h = {'Content-Type':'application/json'};
+  if (API_KEY) h['Authorization'] = 'Bearer ' + API_KEY;
+  return h;
+}
 let conversations = [];
 let activeId = localStorage.getItem('wn_active') || null;
 let abortCtrl = null;
@@ -208,7 +214,7 @@ function getConv(id) { return conversations.find(c => c.id === id); }
 
 async function loadFromServer() {
   try {
-    const resp = await fetch(`${API}/conversations`);
+    const resp = await fetch(`${API}/conversations`, {headers: apiHeaders()});
     if (resp.ok) conversations = await resp.json();
   } catch(e) { conversations = []; }
 }
@@ -219,7 +225,7 @@ async function saveToServer() {
   try {
     await fetch(`${API}/conversations`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: apiHeaders(),
       body: JSON.stringify(conv),
     });
   } catch(e) {}
@@ -306,7 +312,7 @@ async function send() {
   try {
     const resp = await fetch(`${API}/chat`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: apiHeaders(),
       body: JSON.stringify({ message:text, user_id:activeId, history:conv.messages.slice(0,-1) }),
       signal: abortCtrl.signal,
     });
@@ -335,7 +341,7 @@ async function send() {
 
 function stop() {
   if (abortCtrl) abortCtrl.abort();
-  fetch(`${API}/cancel?user_id=${activeId}`, { method:'POST' }).catch(()=>{});
+  fetch(`${API}/cancel?user_id=${activeId}`, { method:'POST', headers: apiHeaders() }).catch(()=>{});
   const conv = getConv(activeId);
   if (conv) conv.messages.push({ role:'assistant', content:'⏹️ 已中断' });
   save(); render();

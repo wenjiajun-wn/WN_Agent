@@ -1,8 +1,8 @@
 """
 子 Agent 定义
-每个 Agent 配备专属工具，职责单一
+每个 Agent 配备专属工具，职责单一（全部使用 ToolCallingAgent，避免 CodeAgent 代码解析错误）
 """
-from smolagents import CodeAgent, ToolCallingAgent
+from smolagents import ToolCallingAgent
 
 from llm import get_model
 from tools.weather  import get_weather
@@ -21,8 +21,8 @@ from tools.coffee   import (
 from rag.knowledge_base import rag_retrieve
 
 
-def build_weather_agent() -> CodeAgent:
-    return CodeAgent(
+def build_weather_agent() -> ToolCallingAgent:
+    return ToolCallingAgent(
         tools=[get_weather],
         model=get_model(),
         name="weather_agent",
@@ -30,8 +30,8 @@ def build_weather_agent() -> CodeAgent:
     )
 
 
-def build_travel_agent() -> CodeAgent:
-    return CodeAgent(
+def build_travel_agent() -> ToolCallingAgent:
+    return ToolCallingAgent(
         tools=[search_places, get_route, get_weather, web_search],
         model=get_model(),
         name="travel_agent",
@@ -39,18 +39,17 @@ def build_travel_agent() -> CodeAgent:
     )
 
 
-def build_food_agent() -> CodeAgent:
-    return CodeAgent(
+def build_food_agent() -> ToolCallingAgent:
+    return ToolCallingAgent(
         tools=[search_places, web_search],
         model=get_model(),
         name="food_agent",
         description="负责餐厅推荐、美食搜索。用户询问吃什么、推荐餐厅、附近美食时调用。不处理咖啡点单。",
         instructions=(
             '你是专业的美食推荐助手。\n'
-            '1. 用 search_places 搜索附近餐厅（city填城市，keyword填菜系或餐厅类型）；\n'
+            '1. 用 search_places 搜索附近餐厅；\n'
             '2. 结果不够时用 web_search 补充；\n'
-            '3. 整理成简洁列表，推荐最好的 3 家；\n'
-            '4. 不要重复搜索相同内容。'
+            '3. 整理成简洁列表，推荐最好的 3 家。'
         ),
     )
 
@@ -92,16 +91,23 @@ def build_coffee_agent() -> ToolCallingAgent:
     )
 
 
-def build_qa_agent() -> CodeAgent:
-    return CodeAgent(
+def build_qa_agent() -> ToolCallingAgent:
+    return ToolCallingAgent(
         tools=[web_search, rag_retrieve],
         model=get_model(),
+        max_steps=3,
         name="qa_agent",
         description="负责百科知识问答、概念解释、查询用户已上传的文档资料。涉及天气/出行/美食/咖啡/待办时不要调用。",
+        instructions=(
+            '你是知识问答助手。\n'
+            '1. 先尝试用 rag_retrieve 或 web_search 查找；\n'
+            '2. 最多搜索 2 次，搜不到就用自身知识回答；\n'
+            '3. 不要反复换关键词搜索。'
+        ),
     )
 
 
-def build_todo_agent() -> CodeAgent:
+def build_todo_agent() -> ToolCallingAgent:
     from smolagents import tool
 
     @tool
@@ -119,7 +125,7 @@ def build_todo_agent() -> CodeAgent:
         deadline_str = f"  📅 截止：{deadline}" if deadline else ""
         return f"✅ 已记录：{task}{deadline_str}\n（提示：接入日历 API 后可自动同步）"
 
-    return CodeAgent(
+    return ToolCallingAgent(
         tools=[format_todo],
         model=get_model(),
         name="todo_agent",

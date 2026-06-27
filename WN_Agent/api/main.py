@@ -5,7 +5,8 @@ FastAPI 后端
 import os
 import tempfile
 from pathlib import Path
-from fastapi import FastAPI, UploadFile, File, HTTPException
+import os
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -18,10 +19,24 @@ app = FastAPI(title="AI Personal Assistant", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],     # 生产环境改为具体域名
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 简单的共享密钥鉴权
+_API_KEY = os.getenv("WN_API_KEY", "")
+
+
+@app.middleware("http")
+async def check_api_key(request: Request, call_next):
+    if request.url.path in ("/", "/health", "/docs", "/openapi.json"):
+        return await call_next(request)
+    if _API_KEY:
+        token = request.headers.get("Authorization", "").removeprefix("Bearer ")
+        if token != _API_KEY:
+            return HTMLResponse("Unauthorized", status_code=401)
+    return await call_next(request)
 
 
 # ── 数据模型 ───────────────────────────────────────────────────
